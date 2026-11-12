@@ -10,7 +10,7 @@ See the [PW](configs/pw.json) and [HAG](configs/hag.json) configurations for hyp
 - `apis.jsonl` with `id`, `name`, `description`, and `category` (plus `tag` and `provider` for PW)
 - `invocations.csv` with `application_id` and `api_id`
 
-Matching the reported scores requires the original data, splits, and baseline configurations.
+The run and split seeds in the configs are defaults for this implementation. The original PW/HAG snapshots, split manifests, and full baseline configurations are needed to reproduce the reported scores. The `counts` command reports observed counts and reference counts separately.
 
 ## Query construction and evaluation
 
@@ -30,6 +30,13 @@ python -m rhoc train --dataset pw --data data/pw --context mixed --output runs/p
 
 Use `--dataset hag --data data/hag` for HAG. Validation runs every five epochs, with early stopping after ten consecutive checks without improvement.
 
+- **Efficiency.** Training reports preprocessing time including frozen BGE feature extraction. The benchmark measures one query at a time, with cached API vectors and online requirement encoding, full-catalog scoring, and top-20 selection.
 - **Ablations.** Use `--variant` with `masked-text`, `no-text`, `no-alignment`, `no-transformer`, or `positional`. Use `--drop-view` to remove a graph view.
 - **Diagnostics.** `--diagnostics` reports performance by API frequency, fixed-target contexts of sizes 1–6, and 20 permutations of six-API contexts.
 - **Baselines.** `baseline` runs Random, Popular, AP, Greedy, or BM25. `compare` tests matching seeds with a paired two-sided t-test.
+
+Measure latency from a saved mixed-context run on CUDA.
+
+```bash
+python -m rhoc benchmark --data data/pw --run runs/pw --device cuda
+```
