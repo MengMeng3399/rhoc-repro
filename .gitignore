@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+.cache/
+data/
+private/
+runs/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
