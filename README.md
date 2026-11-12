@@ -1,6 +1,6 @@
 # RHOC
 
-Reference implementation for requirement-aware incremental cloud API selection.
+RHOC selects APIs based on application requirements and APIs already in use.
 
 ## Data and configuration
 
@@ -9,8 +9,6 @@ See the [PW](configs/pw.json) and [HAG](configs/hag.json) configurations for hyp
 - `applications.jsonl` with `id` and `requirement`
 - `apis.jsonl` with `id`, `name`, `description`, and `category` (plus `tag` and `provider` for PW)
 - `invocations.csv` with `application_id` and `api_id`
-
-The run and split seeds in the configs are defaults for this implementation. The original PW/HAG snapshots, split manifests, and full baseline configurations are needed to reproduce the reported scores. The `counts` command reports observed counts and reference counts separately.
 
 ## Query construction and evaluation
 
