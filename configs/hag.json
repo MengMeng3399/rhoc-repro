@@ -1,0 +1,31 @@
+{
+  "dataset": "hag",
+  "views": ["id", "category"],
+  "checkpoint": "BAAI/bge-base-zh-v1.5",
+  "dim": 32,
+  "text_dim": 768,
+  "text_hidden": 512,
+  "attention_heads": 4,
+  "transformer_layers": 2,
+  "dropout": 0.1,
+  "temperature": 0.1,
+  "alignment_weight": 1.0,
+  "batch_size": 64,
+  "learning_rate": 0.001,
+  "ranking_negatives": 2,
+  "alignment_negatives": 1,
+  "validate_every": 5,
+  "patience": 10,
+  "split_seed": 2026,
+  "run_seeds": [42, 43, 44, 45, 46],
+  "query_counts": {
+    "train": {"1": 944426, "2": 945246, "3": 909948},
+    "validation": {"1": 118296, "2": 118088, "3": 113578},
+    "test": {"1": 119261, "2": 119261, "3": 114594}
+  },
+  "expected_catalog": {"applications": 11399, "apis": 1946, "invocations": 98574},
+  "expected_graphs": {
+    "id": {"nodes": 1946, "edges": 417937},
+    "category": {"nodes": 86, "edges": 3370}
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "dataset": "pw",
+  "views": ["id", "category", "tag", "provider"],
+  "checkpoint": "BAAI/bge-base-en-v1.5",
+  "dim": 64,
+  "text_dim": 768,
+  "text_hidden": 512,
+  "attention_heads": 4,
+  "transformer_layers": 2,
+  "dropout": 0.1,
+  "temperature": 0.1,
+  "alignment_weight": 1.0,
+  "batch_size": 64,
+  "learning_rate": 0.001,
+  "ranking_negatives": 2,
+  "alignment_negatives": 1,
+  "validate_every": 5,
+  "patience": 10,
+  "split_seed": 2026,
+  "run_seeds": [42, 43, 44, 45, 46],
+  "query_counts": {
+    "train": {"1": 80038, "2": 79917, "3": 50762},
+    "validation": {"1": 9566, "2": 9703, "3": 5968},
+    "test": {"1": 10618, "2": 10648, "3": 6802}
+  },
+  "expected_catalog": {"applications": 5786, "apis": 1201, "invocations": 10685},
+  "expected_graphs": {
+    "id": {"nodes": 1201, "edges": 38862},
+    "category": {"nodes": 160, "edges": 5318},
+    "tag": {"nodes": 364, "edges": 32898},
+    "provider": {"nodes": 364, "edges": 5078}
+  }
+}
