@@ -133,7 +133,7 @@ def counts(args):
 def train(args):
     import torch
 
-    from .experiment import Cohort, aggregate, select_device, train_one, write_report
+    from .experiment import Cohort, aggregate, select_device, synchronize, train_one, write_report
     from .metrics import frequency_groups
     from .model import build_views
     from .text import BGEEncoder, DemoEncoder, mask_requirements
@@ -175,6 +175,7 @@ def train(args):
 
     text = None
     text_checkpoint = None
+    text_feature_seconds = 0.0
     if args.variant != "no-text":
         texts = catalog.requirements
         if args.variant == "masked-text":
@@ -185,7 +186,12 @@ def train(args):
         else:
             text_checkpoint = args.bge_checkpoint or config["checkpoint"]
             encoder = BGEEncoder(text_checkpoint, device, config["text_dim"])
+        synchronize(device)
+        text_started = time.perf_counter()
         text = encoder.encode(texts, config["batch_size"])
+        synchronize(device)
+        text_feature_seconds = time.perf_counter() - text_started
+        preprocessing_seconds += text_feature_seconds
         del encoder
 
     nested = None
@@ -215,6 +221,7 @@ def train(args):
         "test_fingerprint": test_fingerprint(catalog, cohorts["test"].queries),
         "query_counts": {key: len(value.queries) for key, value in cohorts.items()},
         "preprocessing_seconds": preprocessing_seconds,
+        "text_feature_seconds": text_feature_seconds,
         "runs": runs,
         "summary": aggregate(runs),
     }, args.output)
@@ -310,6 +317,8 @@ def compare(args):
 
 
 def main():
+    from .benchmark import benchmark
+
     parser = argparse.ArgumentParser(description="Train and evaluate RHOC for incremental cloud API selection.")
     commands = parser.add_subparsers(dest="command", required=True)
     counts_parser = commands.add_parser("counts", help="Report catalog, split, query and graph counts.")
@@ -323,6 +332,15 @@ def main():
     data_args(demo_parser, default_dataset="pw")
     experiment_args(demo_parser, default_epochs=2)
     demo_parser.set_defaults(handler=train)
+    benchmark_parser = commands.add_parser("benchmark", help="Measure batch-one inference latency from a saved run.")
+    benchmark_parser.add_argument("--data", type=Path, required=True)
+    benchmark_parser.add_argument("--run", type=Path, required=True)
+    benchmark_parser.add_argument("--seed", type=int)
+    benchmark_parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    benchmark_parser.add_argument("--queries", type=positive_int, default=200)
+    benchmark_parser.add_argument("--warmup", type=positive_int, default=20)
+    benchmark_parser.add_argument("--bge-checkpoint")
+    benchmark_parser.set_defaults(handler=benchmark)
     baseline_parser = commands.add_parser("baseline", help="Evaluate a bundled baseline.")
     data_args(baseline_parser)
     experiment_args(baseline_parser)

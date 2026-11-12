@@ -155,11 +155,8 @@ def synchronize(device):
         torch.cuda.synchronize(device)
 
 
-def train_one(catalog, views, cohorts, text, config, args, device, seed, nested=None, groups=None):
-    torch.manual_seed(seed)
-    random.seed(seed)
-    align = text is not None and config["alignment_weight"] != 0
-    model = RHOC(
+def build_model(views, config, variant):
+    return RHOC(
         views,
         dim=config["dim"],
         hidden=config["text_hidden"],
@@ -167,10 +164,17 @@ def train_one(catalog, views, cohorts, text, config, args, device, seed, nested=
         heads=config["attention_heads"],
         layers=config["transformer_layers"],
         dropout=config["dropout"],
-        text=text is not None,
-        transformer=args.variant != "no-transformer",
-        positional=args.variant == "positional",
-    ).to(device)
+        text=variant != "no-text",
+        transformer=variant != "no-transformer",
+        positional=variant == "positional",
+    )
+
+
+def train_one(catalog, views, cohorts, text, config, args, device, seed, nested=None, groups=None):
+    torch.manual_seed(seed)
+    random.seed(seed)
+    align = text is not None and config["alignment_weight"] != 0
+    model = build_model(views, config, args.variant).to(device)
     if text is not None:
         text = text.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=config["learning_rate"])
@@ -181,10 +185,12 @@ def train_one(catalog, views, cohorts, text, config, args, device, seed, nested=
     best_state = None
     stale = 0
     train_times = []
-    if device.type == "cuda":
-        torch.cuda.reset_peak_memory_stats(device)
+    peak_bytes = 0
+    measure_gpu = device.type == "cuda"
     for epoch in range(1, args.epochs + 1):
         synchronize(device)
+        if measure_gpu:
+            torch.cuda.reset_peak_memory_stats(device)
         start = time.perf_counter()
         train_negatives = negative_tensors(catalog, cohorts["train"], seed * 100_000 + epoch * 10, config, align)
         loss = epoch_loss(
@@ -192,6 +198,8 @@ def train_one(catalog, views, cohorts, text, config, args, device, seed, nested=
         )
         synchronize(device)
         train_times.append(time.perf_counter() - start)
+        if measure_gpu:
+            peak_bytes = max(peak_bytes, torch.cuda.max_memory_allocated(device))
         if epoch % config["validate_every"] != 0 and epoch != args.epochs:
             continue
         val_loss = epoch_loss(model, cohorts["validation"], text, validation_negatives, config, device)
@@ -208,7 +216,6 @@ def train_one(catalog, views, cohorts, text, config, args, device, seed, nested=
     if best_state is None:
         raise ValueError("Training did not produce a finite validation loss.")
 
-    peak = torch.cuda.max_memory_allocated(device) / 2**30 if device.type == "cuda" else None
     model.load_state_dict(best_state)
     model.eval()
     test_loss = epoch_loss(model, cohorts["test"], text, test_negatives, config, device)
@@ -222,7 +229,7 @@ def train_one(catalog, views, cohorts, text, config, args, device, seed, nested=
         "test_loss": test_loss,
         "metrics": metric_means(scores),
         "mean_train_seconds_per_epoch": statistics.mean(train_times),
-        "peak_training_gpu_gib": peak,
+        "peak_training_gpu_gib": peak_bytes / 2**30 if measure_gpu else None,
     }
     if groups:
         labels = [groups[target] for target in cohorts["test"].targets.tolist()]

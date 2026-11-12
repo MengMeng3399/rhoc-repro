@@ -4,7 +4,12 @@ import re
 import torch
 from torch.nn import functional as F
 
-_CJK = re.compile(r"[\u3400-\u9fff\uf900-\ufaff]")
+# Han ideographs mark boundaries for adjacent non-Han words and API names.
+_HAN_RANGES = (
+    r"\u3400-\u9fff\uf900-\ufaff"
+    r"\U00020000-\U0002ee5f\U0002f800-\U0002fa1f\U00030000-\U0003347f"
+)
+_NON_HAN_WORD = re.compile(rf"[^\W{_HAN_RANGES}]")
 _TOKEN = re.compile(r"[\u3400-\u9fff]|[^\W_]+", re.UNICODE)
 
 
@@ -20,8 +25,8 @@ def mask_requirements(requirements, api_rows, dataset):
     patterns = []
     for term in sorted(terms, key=lambda value: (-len(value), value.casefold(), value)):
         literal = re.escape(term)
-        left = r"(?<!\w)" if term[0].isalnum() and not _CJK.match(term[0]) else ""
-        right = r"(?!\w)" if term[-1].isalnum() and not _CJK.match(term[-1]) else ""
+        left = rf"(?<!{_NON_HAN_WORD.pattern})" if _NON_HAN_WORD.fullmatch(term[0]) else ""
+        right = rf"(?!{_NON_HAN_WORD.pattern})" if _NON_HAN_WORD.fullmatch(term[-1]) else ""
         patterns.append(f"{left}{literal}{right}")
 
     if not patterns:
@@ -42,7 +47,8 @@ class BGEEncoder:
             raise ValueError(f"{checkpoint} has an unexpected hidden size")
 
     @torch.inference_mode()
-    def encode(self, texts, batch_size):
+    def encode(self, texts, batch_size, *, output_device=None):
+        output_device = "cpu" if output_device is None else output_device
         batches = []
         for start in range(0, len(texts), batch_size):
             batch = self.tokenizer(
@@ -53,7 +59,7 @@ class BGEEncoder:
                 return_tensors="pt",
             ).to(self.device)
             result = self.model(**batch).last_hidden_state[:, 0, :]
-            batches.append(F.normalize(result.float(), dim=-1).cpu())
+            batches.append(F.normalize(result.float(), dim=-1).to(output_device))
         return torch.cat(batches)
 
 
@@ -61,11 +67,12 @@ class DemoEncoder:
     def __init__(self, width):
         self.width = width
 
-    def encode(self, texts, batch_size):
+    def encode(self, texts, batch_size, *, output_device=None):
         result = torch.zeros(len(texts), self.width)
         for row, text in enumerate(texts):
             for token in _TOKEN.findall(text.casefold()):
                 digest = hashlib.blake2s(token.encode("utf-8"), digest_size=8).digest()
                 index = int.from_bytes(digest, "little") % self.width
                 result[row, index] += 1 if digest[-1] & 1 else -1
-        return F.normalize(result, dim=-1)
+        result = F.normalize(result, dim=-1)
+        return result if output_device is None else result.to(output_device)
