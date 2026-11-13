@@ -52,6 +52,9 @@ def batches(cohort, batch_size, shuffle_seed=None):
 
 
 def negative_tensors(catalog, cohort, seed, config, align):
+    if align and config["alignment_negatives"] != 1:
+        raise ValueError("alignment_negatives must be 1 when alignment is enabled.")
+
     ranking = sample_negatives(catalog, cohort.queries, seed, config["ranking_negatives"])
     alignment = (
         sample_negatives(catalog, cohort.queries, seed + 1, config["alignment_negatives"])
