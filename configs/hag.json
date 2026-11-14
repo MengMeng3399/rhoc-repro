@@ -19,13 +19,12 @@
   "split_seed": 2026,
   "run_seeds": [42, 43, 44, 45, 46],
   "query_counts": {
-    "train": {"1": 944426, "2": 945246, "3": 909948},
-    "validation": {"1": 118296, "2": 118088, "3": 113578},
-    "test": {"1": 119261, "2": 119261, "3": 114594}
+    "train": {"1": 946044, "2": 945246, "3": 909948},
+    "validation": {"1": 119404, "2": 118088, "3": 113578},
+    "test": {"1": 117463, "2": 119261, "3": 114594}
   },
-  "expected_catalog": {"applications": 11399, "apis": 1946, "invocations": 98574},
+  "expected_catalog": {"applications": 11399, "apis": 1946, "invocations": 98575},
   "expected_graphs": {
-    "id": {"nodes": 1946, "edges": 417937},
-    "category": {"nodes": 86, "edges": 3370}
+    "id": {"nodes": 1946, "edges": 46313}
   }
 }
